@@ -1,0 +1,385 @@
+================================================================================
+ LesionIQ Hybrid Classifier — Fine-Tuning Log
+ Last Updated: 2026-05-06
+================================================================================
+
+This document tracks every fine-tuning decision, hyperparameter change, and
+optimization technique applied to the LesionIQ ablation study. Changes are
+listed in chronological order.
+
+================================================================================
+ PHASE 1: BASELINE ABLATION (Experiments A & B)
+ Applied to: effnet_only, swin_only
+================================================================================
+
+These two experiments used the ORIGINAL training settings as a baseline.
+
+[ARCHITECTURE]
+  - EfficientNet-B4 (pretrained, ImageNet-1K)
+  - SwinV2-Base (pretrained, ImageNet-22K → 1K, 192→384 window upscale)
+  - Input resolution: 384x384
+  - Classifier head: Linear(dim→512) → BN → ReLU → Dropout(0.4) → Linear(512→8)
+
+[LOSS FUNCTION]
+  - Focal Loss (gamma=2.0)
+  - Per-class alpha weights auto-computed from training class distribution
+  - No label smoothing
+
+[OPTIMIZER]
+  - AdamW (lr=1e-4, weight_decay=0.01)
+  - Backbone LR = base_lr * 0.1 (gentle fine-tuning of pretrained weights)
+  - Swin layer-wise LR decay = 0.65
+
+[SCHEDULER]
+  - CosineAnnealingWarmRestarts (T_0=10)
+
+[DATA]
+  - Batch size: 16
+  - Gradient accumulation steps: 3 (effective batch size = 48)
+  - num_workers: 0 (Windows multiprocessing incompatibility)
+  - Sampler: Default random shuffle (uniform sampling)
+  - Augmentations (mild):
+      * Resize(384)
+      * HorizontalFlip(0.5), VerticalFlip(0.5)
+      * Rotate(limit=30, p=0.7)
+      * RandomBrightnessContrast(0.2, 0.2, p=0.5)
+      * HueSaturationValue(10, 20, 10, p=0.4)
+      * GaussianBlur(3-5, p=0.2)
+      * CoarseDropout(1-8 holes, 1-16px, p=0.3)
+
+[REGULARIZATION]
+  - Dropout: 0.4 (classifier head)
+  - Weight decay: 0.01
+  - Gradient clipping: max_norm=1.0
+  - Early stopping: patience=7 on val macro-F1
+
+[RESULTS]
+  - effnet_only:  Best F1 = 0.5123 at epoch 18  |  Val Acc = 0.6886
+  - swin_only:    Best F1 = 0.5762 at epoch 8   |  Val Acc = 0.7326
+  - Observation:  Both models overfitted heavily. Train-val loss gap reached
+                  0.30+ by epoch 12 (Swin). EfficientNet plateaued earlier
+                  but with a smaller gap (~0.23).
+
+
+================================================================================
+ PHASE 2: OPTIMIZED ABLATION (Experiments C & D)
+ Applied to: image_only (Fusion), full (Hybrid + Metadata)
+================================================================================
+
+The following changes were applied to maximize Macro-F1 for hackathon submission.
+These changes affect the DATA PIPELINE, TRAINING LOOP, and REGULARIZATION — not
+the core architecture — so the architectural comparison remains meaningful.
+
+--- CHANGE 1: WeightedRandomSampler -------------------------------------------
+File:    dataloader.py (get_dataloaders)
+Reason:  The dataset is severely imbalanced. NV has 10,304 images while DF has
+         only 588. With uniform sampling, the model barely sees rare classes
+         each epoch. This directly tanks Macro-F1 because F1 penalizes every
+         class equally.
+What:    Replaced default shuffle=True with WeightedRandomSampler. Each sample
+         is weighted inversely proportional to its class frequency.
+         Effect: DF images are sampled ~17x more often per epoch than NV.
+Expected impact: +0.08 to +0.15 Macro-F1 (single biggest lever)
+
+--- CHANGE 2: Backbone Freezing -----------------------------------------------
+File:    models.py (freeze_backbones, __init__)
+Reason:  Swin-Base has 88M parameters. With only 22K training images, the model
+         has enough capacity to memorize every training image. The train-val
+         loss gap exploded to 0.30+ by epoch 8, proving severe overfitting.
+What:    Freeze all backbone layers EXCEPT the last stage:
+           - EfficientNet: only blocks.6 + conv_head + bn2 remain trainable
+           - SwinV2: only layers.3 + norm remain trainable
+         This reduces trainable parameters from ~105M to ~15M.
+Scope:   Only applied in 'image_only' and 'full' modes. The effnet_only and
+         swin_only experiments used full fine-tuning for fair baseline comparison.
+Expected impact: +0.03 to +0.05 (eliminates overfitting)
+
+--- CHANGE 3: MixUp Training --------------------------------------------------
+File:    train.py (mixup_data, mixup_criterion, _train_one_epoch)
+Reason:  Even with augmentation, the model sees each image as belonging to
+         exactly one class. MixUp forces the model to learn soft decision
+         boundaries between diseases, which is clinically realistic (many
+         lesions share visual features across disease types).
+What:    For each batch, randomly blend pairs of images:
+           mixed_image = lambda * image_A + (1-lambda) * image_B
+           loss = lambda * loss(pred, label_A) + (1-lambda) * loss(pred, label_B)
+         where lambda ~ Beta(0.4, 0.4)
+Expected impact: +0.03 to +0.07 Macro-F1
+
+--- CHANGE 4: Test-Time Augmentation (TTA) ------------------------------------
+File:    train.py (_validate)
+Reason:  A single forward pass can be sensitive to the exact orientation of the
+         lesion. Averaging predictions across augmented versions of the same
+         image produces more robust predictions at zero training cost.
+What:    During validation, each image is evaluated twice:
+           1. Original image
+           2. Horizontally flipped image
+         Final prediction = average of both logits.
+Expected impact: +0.03 to +0.05 Macro-F1 (free boost, no extra training)
+
+--- CHANGE 5: Aggressive Data Augmentation ------------------------------------
+File:    dataloader.py (TRAIN_TRANSFORMS)
+Reason:  The mild augmentations used in Phase 1 were insufficient to prevent
+         overfitting with the large Swin backbone. Stronger augmentations
+         artificially increase the effective dataset size.
+Changes (vs Phase 1):
+  - Rotate limit:         30 → 45 degrees
+  + ShiftScaleRotate:     shift=0.1, scale=0.15, p=0.5 (NEW)
+  - BrightnessContrast:   0.2/0.2 → 0.3/0.3, p=0.5→0.6
+  - HueSaturationValue:   10/20/10 → 15/30/15, p=0.4→0.5
+  + ElasticTransform:     alpha=120 (NEW, in OneOf group)
+  + GridDistortion:       (NEW, in OneOf group)
+  + OpticalDistortion:    distort=0.5 (NEW, in OneOf group, p=0.3)
+  - GaussianBlur:         3-5 → 3-7, p=0.2→0.3
+  + GaussNoise:           p=0.2 (NEW)
+  - CoarseDropout holes:  1-16px → 8-32px, p=0.3→0.4
+Expected impact: +0.02 to +0.03 Macro-F1
+
+--- CHANGE 6: Label Smoothing -------------------------------------------------
+File:    config.py (LABEL_SMOOTHING), train.py (FocalLoss)
+Reason:  Without smoothing, the model tries to push predictions to exactly 0 or
+         1. This causes overconfident wrong predictions on ambiguous cases
+         (e.g., AK vs SCC), which tanks F1 on those classes.
+What:    Added label_smoothing=0.1 to the cross-entropy component of FocalLoss.
+         Target distribution becomes: 0.9 for correct class, 0.1/(K-1) for
+         each wrong class, where K=8.
+Expected impact: +0.02 to +0.04 Macro-F1
+
+--- CHANGE 7: Increased Dropout -----------------------------------------------
+File:    models.py (classifier head)
+Reason:  Additional regularization to complement backbone freezing.
+What:    Classifier dropout: 0.4 → 0.5
+Expected impact: +0.01 to +0.02 Macro-F1
+
+--- CHANGE 8: Increased Patience -----------------------------------------------
+File:    config.py (PATIENCE)
+Reason:  With all the new regularization (MixUp, label smoothing, stronger
+         augmentation), the model will converge more slowly but more steadily.
+         The old patience=7 would stop training prematurely before the model
+         reaches its potential.
+What:    PATIENCE: 7 → 10
+Expected impact: Allows the model to find its true best F1
+
+================================================================================
+ PHASE 2 BUGFIXES (applied after code review)
+================================================================================
+
+--- BUGFIX 1: Double Compensation for Class Imbalance -------------------------
+Files:   config.py (FOCAL_ALPHA)
+Problem: WeightedRandomSampler (oversamples rare classes) + Focal Loss alpha
+         weights (down-weights common classes) = double compensation. The rare
+         classes (DF, VASC) were being boosted by BOTH mechanisms simultaneously,
+         causing the model to over-learn their features at the cost of NV/MEL
+         accuracy, which tanks overall performance.
+Fix:     Set FOCAL_ALPHA = [1.0] * 8 (uniform). The sampler alone handles
+         class balance. Focal Loss gamma still focuses on hard examples, which
+         is a different (and complementary) mechanism.
+
+--- BUGFIX 2: MixUp + Focal Loss Interaction (VERIFIED OK) --------------------
+Files:   train.py (mixup_criterion)
+Concern: Standard MixUp uses cross-entropy. With Focal Loss, the focal weight
+         (1-pt)^gamma needs correct computation under mixed labels.
+Status:  VERIFIED CORRECT. The implementation calls FocalLoss.forward()
+         independently for each unmixed target (y_a, y_b). Each call computes
+         its own pt and focal weight relative to that specific single-class
+         target. Lambda then blends the two properly-computed focal losses.
+         This is the standard approach used by Facebook Research.
+
+--- BUGFIX 3: Scheduler-Patience Timing Conflict ------------------------------
+Files:   config.py (COSINE_T_MAX), train.py (scheduler)
+Problem: CosineAnnealingWarmRestarts with T_0=10 + patience=10 creates a
+         timing conflict. When the LR restarts at epoch 10 (spikes back up),
+         it temporarily destabilizes the model. If the best epoch was at 9,
+         the patience counter starts while the model is recovering from the
+         restart. By the time it recovers (epoch 15-16), patience is at 6-7.
+         Early stopping may fire before the model beats its pre-restart best.
+Fix:     Switched to plain CosineAnnealingLR (T_max=50, no restarts).
+         LR decays smoothly and monotonically from 1e-4 to near-zero over
+         all 50 epochs. No sudden spikes. Model converges steadily.
+
+
+================================================================================
+ CUMULATIVE EXPECTED IMPACT
+================================================================================
+
+  Phase 1 Best (swin_only):     0.5762 Macro-F1
+  Conservative estimate:        0.5762 + ~0.15 = ~0.73 Macro-F1
+  Optimistic estimate:          0.5762 + ~0.25 = ~0.80+ Macro-F1
+
+  Key insight: The single biggest lever is the WeightedRandomSampler. Without
+  it, the model essentially ignores classes with <1000 images (DF, VASC, SCC).
+  With it, every class gets equal training attention, directly boosting Macro-F1.
+
+
+================================================================================
+ UNCHANGED SETTINGS (constant across all 4 experiments)
+================================================================================
+
+  - Input resolution: 384x384
+  - Backbone architectures: EfficientNet-B4, SwinV2-Base
+  - Optimizer: AdamW
+  - Base learning rate: 1e-4
+  - Weight decay: 0.01
+  - Gradient clipping: max_norm=1.0
+  - Mixed precision: AMP enabled
+  - Focal loss gamma: 2.0
+  - Swin layer-wise LR decay: 0.65
+  - Validation set: Fixed 4,993 images (no data leakage)
+  - Test set: Fixed 8,238 images (untouched until final evaluation)
+================================================================================
+ PHASE 3: ADDITIONAL TRAINING-TIME OPTIMIZATIONS
+ Applied to: image_only, full (alongside Phase 2 changes)
+================================================================================
+
+--- CHANGE 9: CutMix (replaced MixUp) -----------------------------------------
+File:    train.py (cutmix_data, cutmix_criterion, _train_one_epoch)
+Reason:  MixUp blends pixel values creating ghostly overlays. CutMix cuts a
+         real region from one image and pastes it into another. For dermoscopy,
+         this is more realistic — a real lesion image can contain multiple
+         regions of interest, and CutMix preserves real texture within each
+         region.
+Rate:    Applied to 30% of batches (originally 50%, reduced to protect rare
+         classes like DF and VASC whose discriminative features — e.g., the
+         vascular pattern — can be destroyed by cutting out that region).
+Expected impact: +0.02 to +0.04 over MixUp
+
+--- CHANGE 10: 4-Way TTA (upgraded from 2-way) --------------------------------
+File:    train.py (_validate)
+Reason:  2-way TTA (original + hflip) only captures left-right symmetry.
+         4-way adds vertical flip and combined flip, catching lesions at all
+         orientations. Important for VASC (small vascular structures that
+         appear differently when rotated).
+What:    Average of: original + H-flip + V-flip + H+V flip = 4 predictions.
+Expected impact: +0.01 to +0.03 over 2-way TTA
+
+--- CHANGE 11: Stochastic Weight Averaging (SWA) ------------------------------
+File:    train.py (train function)
+Reason:  The single best checkpoint sits in a sharp loss minimum that doesn't
+         generalize well. SWA averages weights from epochs 20+ to find a wider
+         loss basin. Wider basins = better generalization = higher val F1.
+What:    After epoch 20, SWA begins collecting weights using SWALR scheduler
+         (swa_lr = LR * 0.5). After training ends, batch norm stats are
+         recalculated on the training set. If SWA model beats the best
+         checkpoint, it replaces it automatically.
+Note:    Moved from epoch 10 → 20 to give progressive unfreezing (Change 12)
+         time to adapt before weight averaging begins.
+Expected impact: +0.02 to +0.05 Macro-F1
+
+--- CHANGE 12: Progressive Backbone Unfreezing ---------------------------------
+File:    train.py (train function, epoch loop)
+Reason:  With fully frozen backbones, the classifier head can only learn from
+         fixed ImageNet features. Once the head stabilises (~epoch 15), we
+         unfreeze the LAST stage of both EffNet (blocks.6, conv_head) and Swin
+         (layers.3, norm) so the backbones can adapt to dermoscopy textures.
+Schedule:
+         Epochs  1–14:  Backbones frozen, head learns fusion (patience=10)
+         Epoch  15:     Unfreeze last backbone stage
+                        - Optimizer rebuilt with new trainable params
+                        - Backbone LR = 0.00001 (0.1x head LR of 0.0001)
+                        - Cosine scheduler reset: T_max = remaining epochs (35)
+                        - Patience reset to 0, increased to 15
+                        - Wait counter reset to give model a fair chance
+         Epochs 15–19:  Unfrozen layers adapt to dermoscopy domain
+         Epochs 20+:    SWA begins averaging the adapted weights
+         Epoch  30:     Earliest possible early stop (15 patience from epoch 15)
+                        = 10 SWA epochs averaged
+         Epoch  50:     Max training if model keeps improving
+Only for: image_only and full modes (single-backbone modes skip unfreezing)
+Expected impact: +0.03 to +0.06 Macro-F1
+
+--- CHANGE 13: AUC Computation Bugfix ------------------------------------------
+File:    train.py (_validate)
+Bug:     val_auc was reporting 0.0000 every epoch. Root cause: AMP autocast
+         produces float16 logits. torch.softmax on float16 overflows to 0.0/1.0
+         for many entries, producing degenerate probability distributions.
+         roc_auc_score raised ValueError (caught silently as 0.0).
+Fix:     Cast logits to float32 before softmax:
+           probs = torch.softmax(logits_avg.float(), dim=1)
+         Also print the actual ValueError message instead of silencing it.
+
+--- CHANGE 14: Dynamic Patience After Unfreezing -------------------------------
+File:    train.py (train function)
+Reason:  With patience=10 and SWA starting at epoch 20, early stopping could
+         fire at epoch 25 — only 5 epochs into SWA averaging. SWA needs 10-15
+         epochs of averaging to produce a meaningfully better weight mean.
+Fix:     Use a local 'patience' variable (starts at 10 from config). After
+         unfreezing at epoch 15, increase to 15. This guarantees SWA gets at
+         least 10 epochs of averaging before early stop can fire.
+Timeline:
+         Epochs  1–14:  patience = 10 (can early stop if head doesn't learn)
+         Epoch  15+:    patience = 15 (SWA needs room to average)
+         Epoch  30:     earliest early stop = 10 SWA checkpoints averaged ✓
+
+
+================================================================================
+ POST-TRAINING OPTIMIZATIONS (run after all 4 experiments finish)
+ Script: post_training.py
+================================================================================
+
+--- POST 1: Per-Class Threshold Tuning ----------------------------------------
+Reason:  Default argmax treats all classes equally. But DF and VASC have lower
+         average confidence (the model is less sure about rare classes). By
+         learning per-class scaling factors on the validation set, we let rare
+         classes with lower raw probability still win the argmax.
+Method:  Nelder-Mead optimization of 8 class-specific scaling factors to
+         maximize Macro-F1 on validation set.
+Safety:  Stratified 80/20 split of validation data to prevent overfitting:
+           - val_tune (80%): Nelder-Mead optimizes scales on this split
+           - val_check (20%): held-out sanity check to detect overfit
+         Automatic fallback rules based on check-set delta:
+           delta < 0:    Nelder-Mead overfit → revert to uniform [1.0]*8
+           delta < 0.03: Model already well-calibrated → use scales cautiously
+           delta > 0.15: Suspiciously large → fall back to conservative grid
+                         search over [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0]
+           else:         Healthy gain → use optimized scales
+Expected impact: +0.06 to +0.12 Macro-F1 (FREE, no retraining)
+Warning: DF has ~100 val samples. After 80/20 split, only ~20 in check set.
+         Grid search fallback is the safer option for this class.
+
+--- POST 2: Ensemble All 4 Checkpoints ----------------------------------------
+Reason:  Each ablation model makes different errors. EffNet misses texture,
+         Swin misses local detail, Fusion overfits differently than Hybrid.
+         Averaging their softmax probabilities cancels out individual errors.
+Method:  Both simple average and optimized weighted average (Nelder-Mead on
+         model weights to maximize Macro-F1).
+Expected impact: +0.03 to +0.08 Macro-F1 over best single model
+
+--- POST 3: Temperature Scaling ------------------------------------------------
+Reason:  Raw softmax probabilities are overconfident. For clinical deployment,
+         "94% MEL" must mean 94% actually are MEL. Temperature scaling learns
+         a single T parameter to calibrate probabilities.
+Method:  LBFGS optimization of temperature parameter on validation NLL.
+Expected impact: Calibration improvement, minimal F1 change.
+
+
+--- POST 4: Advanced Threshold Optimization (boost_f1_v3.py) --------------------
+Reason:  Initial Nelder-Mead optimization (POST 1) improved overall F1 but ignored
+         clinical severity. It boosted harmless BCCs while missing dangerous SCCs.
+Method:  Differential Evolution (DiffEvo) with clinical-aware weighting:
+           - BCC scaling capped at [0.3, 3.0] to suppress over-prediction.
+           - SCC scaling boosted heavily [2.0, 7.0] to catch difficult cases.
+           - Clinical weighting applied to DiffEvo objective (MEL w=2.5, SCC w=3.0).
+           - MEL Safety Override: Hard threshold added (raw prob > 0.265 = MEL)
+             to guarantee >80% recall for melanoma regardless of argmax.
+Expected impact: Macro-F1 +0.0217 on validation. SCC recall +62%. MEL->NV
+                 confusion reduced from 21.7% to 7.7% (with safety override).
+
+--- POST 5: SWA Metadata Recovery (fix_swa.py) --------------------------------
+Reason:  Standard PyTorch SWA (Change 11) `update_bn` crashes on models that
+         require multiple inputs (image + metadata) because it assumes a single
+         image tensor.
+Method:  Custom SWA batch norm recovery script (`fix_swa.py`) that properly
+         unpacks `(image, metadata, label)` batches and forwards them to the
+         model during the BN statistics accumulation phase.
+
+
+================================================================================
+ FUTURE OPTIMIZATIONS (not yet applied)
+================================================================================
+
+  [ ] Multi-scale inference — evaluate at 384 + 448 + 512 and average
+  [ ] Knowledge distillation — use ensemble as teacher model
+  [ ] Re-train effnet_only and swin_only with identical Phase 2/3 settings
+      for a fair ablation comparison in the research paper
+
+================================================================================

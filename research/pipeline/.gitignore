@@ -1,0 +1,14 @@
+# Pipeline runtime artifacts — regenerated locally, never committed
+.venv/
+__pycache__/
+*.pyc
+
+# Build artifact (regenerate with `python package.py`)
+lesioniq-pipeline-*.zip
+
+# Stage outputs (created when the pipeline runs)
+datasets/
+preprocessed/
+splits/
+runs/
+*.log

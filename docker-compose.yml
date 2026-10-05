@@ -1,0 +1,52 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lesioniq_backend
+    ports:
+      - "8000:8000"
+    environment:
+      LESIONIQ_ARTIFACT_ROOT: /app/backend/output/inference
+      # OLLAMA_BASE_URL is read from .env — set it there.
+      # Local SLM (default):  OLLAMA_BASE_URL=http://ollama:11434
+      # Remote SLM:           OLLAMA_BASE_URL=http://<other-laptop-ip>:11434
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      OLLAMA_CONTAINER: ${OLLAMA_CONTAINER:-lesioniq_ollama}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b-it-qat}
+      LESIONIQ_FP16: ${LESIONIQ_FP16:-1}
+    volumes:
+      - .:/app
+    depends_on:
+      ollama:
+        condition: service_healthy
+        required: false   # skipped when COMPOSE_PROFILES=remote-slm
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: lesioniq_ollama
+    profiles: ["local-slm", ""]   # active by default; excluded with remote-slm profile
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  ollama-pull:
+    image: curlimages/curl:8.7.1
+    profiles: ["local-slm", ""]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    command: >
+      sh -c "curl -sf --retry 5 --retry-delay 3 http://ollama:11434/api/pull
+      -d '{\"name\":\"gemma3:4b-it-qat\"}'"
+    restart: "no"
+
+volumes:
+  ollama-data:

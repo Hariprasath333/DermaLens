@@ -1,0 +1,38 @@
+# Dependencies and build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+dist/
+build/
+
+# Local environments and secrets
+.env
+frontend/.env
+backend/.env
+venv/
+env/
+.venv/
+
+# Generated inference/training output
+output/
+backend/output/
+test_output/
+backend/test_output/
+cache/
+backend/cache/
+wandb/
+runs/
+
+# Python/JS caches
+__pycache__/
+*.py[cod]
+.vite/
+frontend/.vite/
+
+# Large model/data artifacts supplied separately
+backend/checkpoints/*.pt
+backend/checkpoints/*.pth
+checkpoints/*.pt
+checkpoints/*.pth
+*.zip
+*.csv

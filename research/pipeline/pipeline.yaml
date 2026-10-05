@@ -1,0 +1,46 @@
+# LesionIQ Research Pipeline — default config for `python run.py full`
+# Edit paths to match your machine.
+
+# Where the user has downloaded raw datasets (see docs/DATASETS.md)
+data_root: "./datasets"
+
+# Where preprocessed images will be written (Stage 2 output)
+pre_root: "./preprocessed"
+
+# Where train/val/test split CSVs will be written (Stage 3 output)
+splits_root: "./splits"
+
+# Where training runs are stored (Stages 6-7 output)
+runs_root: "./runs"
+
+# Datasets to include in training/eval (must be present per Stage 1)
+datasets:
+  - isic2019
+  # - ham10000     # uncomment after downloading
+  # - isic2020
+  # - pad_ufes_20
+
+# Variants to train. V0 is the late-concat baseline.
+variants:
+  - V0
+  # - V1   # FiLM at feature
+  # - V4   # token injection in Swin
+  # - V8   # hybrid FiLM + tokens
+
+# Splitting
+split_mode: "single"     # "single" or "kfold"
+seed: 42
+
+# Preprocessing
+resize: 384
+preprocess_workers: 4
+
+# Training
+epochs: 30
+batch_size: 32
+img_size: 384
+num_workers: 4
+lr: 0.0001
+loss: focal              # focal | cb_focal | soft_f1 | ldam
+use_timm: true
+pretrained: true

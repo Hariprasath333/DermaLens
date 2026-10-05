@@ -1,0 +1,25 @@
+# ============================================================
+# LesionIQ — Centralized Configuration
+# ============================================================
+# All user-specific paths live here. Edit once after cloning.
+# Environment variables override any value below:
+#   LESIONIQ_TRAIN_CSV, LESIONIQ_VAL_CSV, LESIONIQ_TEST_CSV,
+#   LESIONIQ_TRAIN_IMG_DIR, LESIONIQ_TEST_IMG_DIR,
+#   LESIONIQ_METADATA_CSV, LESIONIQ_OUTPUT_DIR
+# ============================================================
+
+# --- Data CSV paths (Layer 0 manifests with image_path column) ---
+train_csv: "path/to/LesionIQ/layer0_train.csv"
+val_csv:   "path/to/LesionIQ/layer0_val.csv"
+test_csv:  "path/to/LesionIQ/test set/final/layer0_test.csv"
+
+# --- Image directories (used by older scripts; CSVs contain absolute paths) ---
+train_img_dir: "path/to/LesionIQ/Segregated"
+test_img_dir:  "path/to/LesionIQ/Test"
+
+# --- Metadata CSV (isic_id, age_approx, sex, region, disease-class) ---
+metadata_csv: "path/to/LesionIQ/metadata.csv"
+
+# --- Output directory (checkpoints, logs, reports, inference bundles) ---
+# Leave empty to use the default: backend/output/
+output_dir: ""

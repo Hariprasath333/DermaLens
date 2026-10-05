@@ -1,0 +1,29 @@
+# Core deep learning
+torch>=2.0
+torchvision>=0.15
+
+# Image
+opencv-python-headless>=4.8
+Pillow>=10.0
+
+# Tabular + math
+numpy>=1.24,<2.0
+pandas>=2.0
+scikit-learn>=1.3
+scipy>=1.10
+
+# Augmentations
+albumentations>=1.4
+
+# Models
+timm>=0.9
+
+# Config + logging
+PyYAML>=6.0
+
+# Plots
+matplotlib>=3.7
+seaborn>=0.12
+
+# Optional but useful
+tqdm>=4.65

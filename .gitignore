@@ -1,0 +1,113 @@
+# ============================================================
+# LesionIQ — .gitignore
+# ============================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Frontend
+node_modules/
+frontend/node_modules/
+.vite/
+frontend/.vite/
+frontend/dist/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+.cursor/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model checkpoints in output/ (training artifacts)
+output/
+backend/output/
+test_output/
+backend/test_output/
+cache/
+backend/cache/
+output/checkpoints/*.pt
+output/checkpoints/*.pth
+
+# Checkpoints (excluded from git)
+checkpoints/*.pt
+checkpoints/*.pth
+backend/checkpoints/*.pt
+backend/checkpoints/*.pth
+
+# Training artifacts
+output/logs/
+output/reports/
+output/explainability/
+wandb/
+runs/
+
+# Data files
+data/*.csv
+data/*.zip
+backend/data/*.csv
+backend/data/*.zip
+*.csv
+*.zip
+
+# StyleGAN2-ADA 
+synthetic/stylegan2/stylegan2-ada-pytorch/
+backend/synthetic/stylegan2/stylegan2-ada-pytorch/
+training-runs/
+datasets/
+dataset/
+
+# Synthetic images 
+synthetic_output/
+synthetic_stylegan/
+
+# Large media
+*.png
+*.jpg
+*.jpeg
+*.bmp
+!docs/*.png
+!backend/preprocessing/SSIM for ISIC 2019/*.png
+
+# LoRA weights
+lora_weights/
+
+# Local secrets and config
+.env
+frontend/.env
+backend/.env
+backend/config.yaml
+
+# Tunnel binaries (downloaded at runtime)
+cloudflared.exe
+cloudflared
+
+# Nested checkpoint copies
+backend/checkpoints/checkpoints/
+
+# Logit caches (regeneratable; large)
+backend/checkpoints/val_logits_*.npz
+
+# Windows shortcuts (stray local junk)
+*.lnk

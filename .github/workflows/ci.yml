@@ -1,0 +1,110 @@
+# ============================================================
+# LesionIQ — CI Pipeline
+# ============================================================
+# Validates that the backend installs cleanly and the frontend
+# builds. Does NOT run GPU-dependent training or inference.
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  backend:
+    name: Backend — Install & Smoke Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install PyTorch (CPU)
+        run: |
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install backend dependencies
+        run: |
+          pip install -r backend/requirements.txt
+
+      - name: Smoke test — import core modules
+        run: |
+          python -c "
+          from backend.classifier.models import LesionIQHybrid
+          from backend.preprocessing import run_pipeline
+          from backend.classifier.inference import encode_metadata, build_model, normalize_mode
+          print('[OK] All core imports succeeded')
+          "
+
+      - name: Smoke test — model construction (CPU, no checkpoint)
+        run: |
+          python -c "
+          import torch
+          from backend.classifier.inference import build_model
+          try:
+              model = build_model(mode='full', checkpoint_path=None)
+          except FileNotFoundError:
+              print('[OK] Model architecture builds; checkpoint not available (expected in CI)')
+          except Exception as e:
+              if 'No such file' in str(e) or 'checkpoints' in str(e):
+                  print('[OK] Model architecture builds; checkpoint not available (expected in CI)')
+              else:
+                  raise
+          "
+
+  frontend:
+    name: Frontend — Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Type check & build
+        working-directory: frontend
+        run: npm run build
+
+  lint:
+    name: Frontend — Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint

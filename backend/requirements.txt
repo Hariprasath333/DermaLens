@@ -1,0 +1,48 @@
+# ============================================================
+# LesionIQ — Python dependencies
+# ============================================================
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# PyTorch with CUDA must be installed separately:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+# ============================================================
+
+# --- Core deep learning ----------------------------------------
+torch>=2.0
+torchvision>=0.15
+timm>=0.9                    # EfficientNet-B4 + SwinV2 backbones
+
+# --- API bridge -------------------------------------------------
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9
+httpx>=0.27
+
+# --- Data & augmentation --------------------------------------
+numpy>=1.21
+pandas>=1.4
+Pillow>=9.0
+albumentations>=1.3          # Training augmentations (CutMix, geometric, color)
+opencv-python-headless>=4.5  # Image I/O and preprocessing
+
+# --- ML & metrics ---------------------------------------------
+scikit-learn>=1.1            # F1, AUC, classification reports, stratified splits
+scipy>=1.7                   # Nelder-Mead threshold optimization
+
+# --- Configuration --------------------------------------------
+pyyaml>=6.0                  # backend/config.yaml loader
+
+# --- Visualization & logging ----------------------------------
+matplotlib>=3.5
+seaborn>=0.12                # Confusion matrix heatmaps
+wandb>=0.15                  # Experiment tracking (W&B)
+tqdm>=4.60                   # Progress bars
+
+# --- Explainability -------------------------------------------
+shap>=0.42                   # SHAP feature importance for metadata branch
+
+# --- Synthetic data quality ------------------------------------
+scikit-image>=0.19           # SSIM, structural metrics
+imagehash>=4.3               # Perceptual hash deduplication
