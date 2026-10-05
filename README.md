@@ -200,7 +200,15 @@ To enable live local LLM narrative generation instead of the rule-based clinical
 
 ## 6. Model Training & Evaluation
 
-To train or evaluate the hybrid classifier from scratch:
+### 🚀 Run Directly in Google Colab (One-Click Training)
+A complete, self-contained training and explainability notebook is provided in the repository:
+- **Notebook File:** [`DermaLens_Training_Colab.ipynb`](DermaLens_Training_Colab.ipynb)
+- Open it in [Google Colab](https://colab.research.google.com/), enable a **T4 GPU**, and run all cells to execute training, SWA optimization, test metrics, and Grad-CAM++ overlays end-to-end.
+
+---
+
+### Local Training & Evaluation
+To train or evaluate the hybrid classifier locally from scratch:
 
 ```powershell
 # Train the full hybrid model (EfficientNet-B4 + SwinV2 + Metadata)
