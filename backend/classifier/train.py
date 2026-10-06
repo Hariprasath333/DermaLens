@@ -28,7 +28,7 @@ from backend.classifier.config import (
     DEVICE, EPOCHS, LR, WEIGHT_DECAY, PATIENCE, COSINE_T_MAX,
     SWIN_LR_DECAY, FOCAL_GAMMA, FOCAL_ALPHA, USE_AMP,
     META_AUX_WEIGHT, META_LR_SCALE, OUTPUT_DIR, GRAD_ACCUM_STEPS,
-    LABEL_SMOOTHING,
+    LABEL_SMOOTHING, MEL_COST_FACTOR, SCC_COST_FACTOR, BCC_COST_FACTOR,
 )
 from backend.classifier.models import LesionIQHybrid
 
@@ -253,6 +253,13 @@ def _validate(
     acc = np.mean(np.array(all_preds) == np.array(all_labels))
     macro_f1 = f1_score(all_labels, all_preds, average="macro")
     
+    # Melanoma (MEL, class index 0) sensitivity & specificity
+    y_true_np = np.array(all_labels)
+    y_pred_np = np.array(all_preds)
+    mel_mask = (y_true_np == 0)
+    mel_recall = float(np.sum((y_pred_np == 0) & mel_mask) / max(np.sum(mel_mask), 1))
+    mel_spec = float(np.sum((y_pred_np != 0) & (~mel_mask)) / max(np.sum(~mel_mask), 1))
+
     # Macro AUC (one-vs-rest, threshold-independent)
     all_probs = np.concatenate(all_probs, axis=0)
     try:
@@ -261,7 +268,7 @@ def _validate(
         print(f"  [WARN] AUC computation failed: {e}")
         macro_auc = 0.0
     
-    return avg_loss, acc, macro_f1, macro_auc
+    return avg_loss, acc, macro_f1, macro_auc, mel_recall, mel_spec
 
 # ── Full training routine ────────────────────────────────────
 
@@ -278,12 +285,18 @@ def train(
     ckpt_dir = out / "checkpoints"; ckpt_dir.mkdir(parents=True, exist_ok=True)
     log_dir  = out / "logs";        log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Loss
+    # Loss: Apply cost-sensitive weighting for Melanoma and malignant classes
     alpha = FOCAL_ALPHA
     if alpha is None:
-        alpha = torch.tensor(class_weights, dtype=torch.float32).to(device)
+        alpha_t = torch.tensor(class_weights, dtype=torch.float32)
     else:
-        alpha = torch.tensor(alpha, dtype=torch.float32).to(device)
+        alpha_t = torch.tensor(alpha, dtype=torch.float32)
+    if MEL_COST_FACTOR > 1.0 and len(alpha_t) >= 8:
+        alpha_t[0] *= MEL_COST_FACTOR  # MEL
+        alpha_t[2] *= BCC_COST_FACTOR  # BCC
+        alpha_t[7] *= SCC_COST_FACTOR  # SCC
+        alpha_t = alpha_t / alpha_t.mean()
+    alpha = alpha_t.to(device)
     criterion = FocalLoss(gamma=FOCAL_GAMMA, alpha=alpha,
                           label_smoothing=LABEL_SMOOTHING).to(device)
 
@@ -312,6 +325,8 @@ def train(
     print(f"\n{'='*60}")
     print(f" Training  |  mode={model.mode}  |  epochs={epochs}  |  device={device}")
     print(f" Unfreeze at epoch {UNFREEZE_EPOCH}  |  SWA at epoch {SWA_START}")
+    if MEL_COST_FACTOR > 1.0:
+        print(f" Cost-Sensitive Multipliers: MEL x{MEL_COST_FACTOR} | SCC x{SCC_COST_FACTOR} | BCC x{BCC_COST_FACTOR}")
     print(f"{'='*60}\n")
 
     for epoch in range(1, epochs + 1):
@@ -356,7 +371,7 @@ def train(
         train_loss = _train_one_epoch(
             model, train_loader, criterion, optimizer, scaler, device,
         )
-        val_loss, val_acc, val_f1, val_auc = _validate(model, val_loader, criterion, device)
+        val_loss, val_acc, val_f1, val_auc, mel_rec, mel_sp = _validate(model, val_loader, criterion, device)
         
         # Switch to SWA scheduler after SWA_START
         if epoch >= SWA_START:
@@ -371,6 +386,7 @@ def train(
         row = dict(epoch=epoch, train_loss=round(train_loss, 5),
                    val_loss=round(val_loss, 5), val_acc=round(val_acc, 4),
                    val_f1=round(val_f1, 4), val_auc=round(val_auc, 4),
+                   mel_recall=round(mel_rec, 4), mel_spec=round(mel_sp, 4),
                    time_s=round(elapsed, 1))
         log_rows.append(row)
         wandb.log(row)
@@ -385,6 +401,7 @@ def train(
                 "optimizer_state_dict": optimizer.state_dict(),
                 "val_f1": val_f1,
                 "val_auc": val_auc,
+                "mel_recall": mel_rec,
                 "mode": model.mode,
             }, best_path)
             marker = "  * BEST"
@@ -395,7 +412,7 @@ def train(
         print(f"  Epoch {epoch:3d}/{epochs}  |  "
               f"train_loss={train_loss:.4f}  val_loss={val_loss:.4f}  "
               f"val_acc={val_acc:.4f}  val_f1={val_f1:.4f}  "
-              f"val_auc={val_auc:.4f}  "
+              f"MEL_rec={mel_rec*100:.1f}%  val_auc={val_auc:.4f}  "
               f"({elapsed:.1f}s){marker}{swa_tag}")
 
         if wait >= patience:

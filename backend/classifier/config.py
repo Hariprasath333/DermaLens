@@ -65,6 +65,12 @@ FOCAL_GAMMA = 2.0
 FOCAL_ALPHA = [1.0] * 8  # Uniform alpha — class balance is handled by WeightedRandomSampler
                          # Using both sampler + alpha = double compensation that hurts common classes
 
+# ── Cost-sensitive clinical penalty ──────────────────────────
+# Prioritize Melanoma (MEL) recall: false negatives carry severe clinical risk
+MEL_COST_FACTOR = float(os.getenv("MEL_COST_FACTOR", "2.5"))
+SCC_COST_FACTOR = float(os.getenv("SCC_COST_FACTOR", "1.8"))
+BCC_COST_FACTOR = float(os.getenv("BCC_COST_FACTOR", "1.5"))
+
 # ── Early stopping ───────────────────────────────────────────
 PATIENCE = 10
 
