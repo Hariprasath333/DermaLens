@@ -1,5 +1,5 @@
 """
-LesionIQ Preprocessing Pipeline — Public API
+Preprocessing Pipeline — Public API
 ==============================================
 Exposes the 4-step Layer 0 preprocessing pipeline used during both
 training and inference:
