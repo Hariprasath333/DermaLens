@@ -355,7 +355,7 @@ async def _generate_slm_summary(
         # connect_timeout is short so an offline Ollama fails fast and hits
         # the fallback below before the proxy or UI times out.
         async with httpx.AsyncClient(
-            timeout=httpx.Timeout(connect=5.0, read=150.0, write=10.0, pool=5.0)
+            timeout=httpx.Timeout(connect=2.0, read=8.0, write=5.0, pool=2.0)
         ) as client:
             message_content = [{"type": "text", "text": prompt}]
             for img_b64 in images:

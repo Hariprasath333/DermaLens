@@ -279,10 +279,36 @@ def get_display_image(image_path):
 # ===================================================================
 
 def build_model(mode="full", checkpoint_path=None):
+    mode = normalize_mode(mode)
     model = LesionIQHybrid(mode=mode, pretrained=False).to(DEVICE)
-    if checkpoint_path is None:
-        checkpoint_path = str(CKPT_DIR / f"best_{mode}.pt")
-    ckpt = torch.load(checkpoint_path, map_location=DEVICE, weights_only=False)
+    
+    resolved_path = None
+    if checkpoint_path is not None and Path(checkpoint_path).exists():
+        resolved_path = Path(checkpoint_path)
+    else:
+        # Check standard checkpoint filenames in CKPT_DIR
+        candidates = [
+            CKPT_DIR / f"best_{mode}.pt",
+            CKPT_DIR / f"best_{mode}.pth",
+            CKPT_DIR / "best_model.pt",
+            CKPT_DIR / "best_model.pth",
+            CKPT_DIR / "best_full.pt",
+            CKPT_DIR / "best_dermalens_model.pt",
+        ]
+        for c in candidates:
+            if c.exists():
+                resolved_path = c
+                break
+
+    if resolved_path is None:
+        # Auto-bootstrap baseline checkpoint if none exists
+        from backend.classifier.bootstrap_checkpoint import bootstrap_checkpoint
+        target_ckpt = CKPT_DIR / f"best_{mode}.pt"
+        print(f"[BOOTSTRAP] No checkpoint found on disk for mode '{mode}'. "
+              f"Auto-generating baseline weights at {target_ckpt}...")
+        resolved_path = bootstrap_checkpoint(mode=mode, target_path=target_ckpt)
+
+    ckpt = torch.load(str(resolved_path), map_location=DEVICE, weights_only=False)
     state_dict = ckpt.get("model_state_dict", ckpt.get("state_dict", ckpt))
     state_dict = {
         k.replace("module.", "", 1): v
@@ -297,9 +323,9 @@ def build_model(mode="full", checkpoint_path=None):
     # fp16 inference: halves VRAM (~6GB → ~3GB) with no accuracy loss at eval time
     if DEVICE == "cuda" and os.getenv("LESIONIQ_FP16", "1") != "0":
         model.half()
-        print(f"[OK] Model loaded in fp16: {mode} from {checkpoint_path}")
+        print(f"[OK] Model loaded in fp16: {mode} from {resolved_path}")
     else:
-        print(f"[OK] Model loaded: {mode} from {checkpoint_path}")
+        print(f"[OK] Model loaded: {mode} from {resolved_path}")
     return model
 
 
@@ -402,20 +428,24 @@ def _load_runtime(mode="full", checkpoint_path=None,
 
 
 # ===================================================================
-#  Stage 3b — 2-way TTA prediction with temperature scaling
+#  Stage 3b — 4-View TTA prediction with temperature scaling
 # ===================================================================
 
 @torch.no_grad()
 def predict(model, image_tensor, meta_tensor=None, temperature=1.0,
-            scales=None, per_class_temperatures=None):
-    """2-way TTA prediction with temperature calibration + DiffEvo scaling.
+            scales=None, per_class_temperatures=None, use_tta=True):
+    """4-View TTA prediction with temperature calibration + DiffEvo scaling.
+
+    Averages 4 orthogonal view variations:
+        1. Canonical orientation
+        2. Horizontal flip (axis 3)
+        3. Vertical flip (axis 2)
+        4. Diagonal flip (axis 2 and 3)
 
     Calibration precedence (highest to lowest):
         1. per_class_temperatures (8-d, one scalar per class) — preferred
         2. temperature (global scalar) — fallback when (1) is unavailable
     DiffEvo ``scales`` are applied after softmax in both cases.
-
-    Uses horizontal flip only. autocast on CUDA for reduced activation memory.
     """
     image_tensor = image_tensor.to(DEVICE)
     if meta_tensor is not None:
@@ -431,16 +461,25 @@ def predict(model, image_tensor, meta_tensor=None, temperature=1.0,
         out = model(x, meta_tensor)
         return out[0] if isinstance(out, tuple) else out
 
+    # Check env override for TTA
+    if os.getenv("DERMALENS_USE_TTA", os.getenv("LESIONIQ_USE_TTA", "1")) == "0":
+        use_tta = False
+
     autocast_ctx = (
         torch.autocast(device_type="cuda", dtype=torch.float16)
         if DEVICE == "cuda"
         else torch.autocast(device_type="cpu", enabled=False)
     )
     with autocast_ctx:
-        logits = (
-            _fwd(image_tensor)
-            + _fwd(torch.flip(image_tensor, dims=[3]))   # horizontal flip only
-        ) / 2.0
+        if use_tta:
+            logits = (
+                _fwd(image_tensor)
+                + _fwd(torch.flip(image_tensor, dims=[3]))    # horizontal flip
+                + _fwd(torch.flip(image_tensor, dims=[2]))    # vertical flip
+                + _fwd(torch.flip(image_tensor, dims=[2, 3])) # diagonal flip
+            ) / 4.0
+        else:
+            logits = _fwd(image_tensor)
 
     # Temperature scaling (applied before softmax)
     # Per-class temperatures take precedence over the global scalar.
