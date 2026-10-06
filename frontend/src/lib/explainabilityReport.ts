@@ -85,10 +85,33 @@ function reasoningLines(caseRecord: CaseRecord): string[] {
   return lines.filter(Boolean);
 }
 
-export function buildExplainabilityReport(caseRecord: CaseRecord): string {
+export interface AbcdeReportState {
+  asymmetry: number;
+  border: number;
+  color: number;
+  diameter: number;
+  evolution: number;
+}
+
+export function buildExplainabilityReport(caseRecord: CaseRecord, abcde?: AbcdeReportState): string {
   const threshold = predictedThreshold(caseRecord);
   const metadata = caseRecord.metadata;
   const reasoning = reasoningLines(caseRecord).map((line) => `  ${line}`).join("\n\n");
+
+  let abcdeSection = "";
+  if (abcde) {
+    const total = abcde.asymmetry + abcde.border + abcde.color + abcde.diameter + abcde.evolution;
+    const tier = total >= 5 ? "High Concern (Biopsy Indicated)" : total >= 3 ? "Moderate Concern (Close Follow-Up)" : "Low Concern (Routine)";
+    abcdeSection = `
+ABCDE CLINICAL ASSESSMENT
+  A — Asymmetry : +${abcde.asymmetry} pts (${abcde.asymmetry === 0 ? "Symmetric" : abcde.asymmetry === 1 ? "1-Axis Asymmetric" : "2-Axis Asymmetric"})
+  B — Border    : +${abcde.border} pts (${abcde.border === 0 ? "Regular" : abcde.border === 1 ? "Mild notching" : "Marked jaggedness"})
+  C — Color     : +${abcde.color} pts (${abcde.color === 0 ? "Uniform" : abcde.color === 1 ? "Dual shade" : "Variegated 3+ shades"})
+  D — Diameter  : +${abcde.diameter} pt (${abcde.diameter === 0 ? "< 6 mm" : "≥ 6 mm"})
+  E — Evolution : +${abcde.evolution} pt (${abcde.evolution === 0 ? "Static" : "Evolving / Symptomatic"})
+  Total Score   : ${total} / 8 points [${tier}]
+`;
+  }
 
   return `${REPORT_DIVIDER}
 DERMALENS CLINICAL EXPLAINABILITY REPORT
@@ -98,7 +121,7 @@ PREDICTION
   Diagnosis   : ${caseRecord.predictedClassLabel} (${caseRecord.predictedClassCode})
   Confidence  : ${pct(caseRecord.calibratedConfidence)} (${confidenceLevel(caseRecord.calibratedConfidence)} confidence)
   Threshold   : ${threshold.toFixed(2)} (tuned — default 0.50)
-
+${abcdeSection}
 REASONING
 ${reasoning}
 
@@ -127,8 +150,8 @@ Final diagnosis must be made by a qualified clinician.
 ${REPORT_DIVIDER}`;
 }
 
-export function downloadExplainabilityReport(caseRecord: CaseRecord): void {
-  const report = buildExplainabilityReport(caseRecord);
+export function downloadExplainabilityReport(caseRecord: CaseRecord, abcde?: AbcdeReportState): void {
+  const report = buildExplainabilityReport(caseRecord, abcde);
   const blob = new Blob([report], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");

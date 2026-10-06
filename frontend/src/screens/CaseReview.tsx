@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AlertTriangle, Download, Loader2 } from "lucide-react";
 import type { CaseRecord, OverlayMode, UploadMetadataInput } from "../types/lesioniq";
 import { pct } from "../lib/format";
@@ -6,6 +6,8 @@ import { resolveLesionIQArtifactUrl } from "../lib/lesioniqApi";
 import { buildExplainabilityReport, downloadExplainabilityReport } from "../lib/explainabilityReport";
 import { ImageViewerCard } from "../components/domain/ImageViewerCard";
 import { UploadInferenceCard } from "../components/domain/UploadInferenceCard";
+import { AbcdeCalculator, defaultAbcdeState, type AbcdeState } from "../components/domain/AbcdeCalculator";
+import { PredictionList } from "../components/domain/PredictionList";
 import { Card } from "../components/primitives/Card";
 import { StatusBadge } from "../components/primitives/StatusBadge";
 
@@ -38,6 +40,15 @@ export function CaseReview({
   uploadMetadata: UploadMetadataInput;
   onUploadMetadataChange: (metadata: UploadMetadataInput) => void;
 }) {
+  const [abcdeState, setAbcdeState] = useState<AbcdeState>(defaultAbcdeState);
+
+  const melanomaProbability = useMemo(() => {
+    if (!caseRecord) return 0;
+    const match = caseRecord.predictionScores?.find((s) => s.classCode === "MEL");
+    if (match) return match.probability;
+    return caseRecord.predictedClassCode === "MEL" ? caseRecord.calibratedConfidence : 0.05;
+  }, [caseRecord]);
+
   const viewerArtifactUrls = useMemo<Partial<Record<OverlayMode, string>>>(() => {
     if (!analysisReady || !caseRecord?.inferenceBundle) return {};
 
@@ -57,8 +68,8 @@ export function CaseReview({
     caseRecord?.uploadedImageUrl
   ]);
   const explainabilityReport = useMemo(
-    () => (caseRecord ? buildExplainabilityReport(caseRecord) : ""),
-    [caseRecord]
+    () => (caseRecord ? buildExplainabilityReport(caseRecord, abcdeState) : ""),
+    [caseRecord, abcdeState]
   );
 
   if (analysisPending) {
@@ -218,61 +229,73 @@ export function CaseReview({
           <StatusBadge label={caseRecord.modelMode} tone="accent" />
         </div>
       </div>
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card title="Primary output" eyebrow="Prediction summary">
-            <div className="min-h-[112px]">
-              <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-clinical-muted">Predicted class</p>
-              <p className="mt-2 text-[30px] font-bold leading-none tracking-[-0.02em] text-clinical-accent">{caseRecord.predictedClassCode}</p>
-              <p className="mt-1 text-sm font-semibold text-clinical-ink">{caseRecord.predictedClassLabel}</p>
-              <p className="mt-3 max-w-md text-sm leading-5 text-clinical-muted">Top-ranked class from the calibrated 8-class dermoscopy model.</p>
-            </div>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        {/* Left Column: Evidence, Visuals, and Generated Explainability */}
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card title="Primary output" eyebrow="Prediction summary">
+              <div className="min-h-[104px]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.11em] text-clinical-muted">Predicted class</p>
+                <p className="mt-2 text-[28px] font-bold leading-none tracking-[-0.02em] text-clinical-accent">{caseRecord.predictedClassCode}</p>
+                <p className="mt-1 text-sm font-semibold text-clinical-ink">{caseRecord.predictedClassLabel}</p>
+                <p className="mt-2 text-xs leading-5 text-clinical-muted">Top-ranked class from the calibrated 8-class dermoscopy model.</p>
+              </div>
+            </Card>
+            <Card title="Probability" eyebrow="Calibrated confidence">
+              <div className="min-h-[104px]">
+                <p className="text-[28px] font-bold leading-none tabular-nums tracking-[-0.02em] text-clinical-accent">{pct(caseRecord.calibratedConfidence)}</p>
+                <p className="mt-2 text-xs leading-5 text-clinical-muted">Temperature-scaled model probability for review support, not clinical urgency.</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="font-mono text-xs text-clinical-muted">Margin:</span>
+                  <span className="font-mono text-xs font-semibold text-clinical-accent">{(caseRecord.thresholdMargin * 100).toFixed(0)} pts</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          <ImageViewerCard imageUrl={uploadedPreviewUrl ?? viewerArtifactUrls.raw ?? caseRecord.uploadedImageUrl} artifactUrls={viewerArtifactUrls} />
+
+          <Card
+            title="SLM explanation"
+            eyebrow="Generated rationale"
+            action={
+              <button
+                type="button"
+                onClick={() => downloadExplainabilityReport(caseRecord, abcdeState)}
+                className="inline-flex items-center gap-2 rounded-clinical border border-clinical-line bg-clinical-surface px-3 py-1.5 font-mono text-xs font-semibold text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+                aria-label="Download explainability report"
+              >
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                Download Report
+              </button>
+            }
+          >
+            <pre className="max-h-[380px] overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-6 text-clinical-ink">
+              {explainabilityReport}
+            </pre>
           </Card>
-          <Card title="Probability" eyebrow="Calibrated confidence">
-            <div className="min-h-[112px]">
-              <p className="text-[30px] font-bold leading-none tabular-nums tracking-[-0.02em] text-clinical-accent">{pct(caseRecord.calibratedConfidence)}</p>
-              <p className="mt-3 max-w-md text-sm leading-5 text-clinical-muted">Temperature-scaled model probability for review support, not clinical urgency.</p>
-            </div>
-          </Card>
-        </div>
 
-        <ImageViewerCard imageUrl={uploadedPreviewUrl ?? viewerArtifactUrls.raw ?? caseRecord.uploadedImageUrl} artifactUrls={viewerArtifactUrls} />
-
-        <Card
-          title="SLM explanation"
-          eyebrow="Generated rationale"
-          action={
-            <button
-              type="button"
-              onClick={() => downloadExplainabilityReport(caseRecord)}
-              className="inline-flex items-center gap-2 rounded-md border border-clinical-line bg-clinical-raised px-3 py-2 text-xs font-semibold text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
-              aria-label="Download explainability report"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-              Download
-            </button>
-          }
-        >
-          <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-6 text-clinical-ink">
-            {explainabilityReport}
-          </pre>
-        </Card>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <Card title="Review explanation" eyebrow="Review note" action={<StatusBadge label={caseRecord.urgency} tone={caseRecord.urgency === "High concern" ? "danger" : caseRecord.urgency === "Routine" ? "success" : "warning"} />}>
+          <Card title="Review explanation" eyebrow="Recommendation" action={<StatusBadge label={caseRecord.urgency} tone={caseRecord.urgency === "High concern" ? "danger" : caseRecord.urgency === "Routine" ? "success" : "warning"} />}>
             <p className="text-sm font-semibold leading-5 text-clinical-ink">{caseRecord.recommendation}</p>
             <button
               type="button"
               onClick={onNavigateExplainability}
-              className="mt-3 rounded-md border border-clinical-line bg-clinical-raised px-3 py-2 text-sm font-medium text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+              className="mt-3 rounded-clinical border border-clinical-line bg-clinical-surface px-3 py-1.5 text-xs font-medium text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
             >
-              Review explanation
+              Inspect full visual explainability →
             </button>
           </Card>
-          <Card title="Class threshold" eyebrow="Threshold margin">
-            <p className="text-2xl font-bold tabular-nums text-clinical-accent">{(caseRecord.thresholdMargin * 100).toFixed(0)} pts</p>
-            <p className="mt-2 text-sm leading-5 text-clinical-muted">Above the tuned threshold for {caseRecord.predictedClassCode}.</p>
-          </Card>
+        </div>
+
+        {/* Right Column: Interactive ABCDE Clinical Assessment & Ranked Differential */}
+        <div className="space-y-4">
+          <AbcdeCalculator
+            melanomaProbability={melanomaProbability}
+            state={abcdeState}
+            onChange={setAbcdeState}
+          />
+
+          <PredictionList scores={caseRecord.predictionScores ?? []} />
         </div>
       </div>
     </>
