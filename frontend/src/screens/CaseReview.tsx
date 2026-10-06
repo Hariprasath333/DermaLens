@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, Download, Loader2 } from "lucide-react";
+import { AlertTriangle, Download, FileText, Loader2 } from "lucide-react";
 import type { CaseRecord, OverlayMode, UploadMetadataInput } from "../types/lesioniq";
 import { pct } from "../lib/format";
 import { resolveLesionIQArtifactUrl } from "../lib/lesioniqApi";
@@ -7,6 +7,7 @@ import { buildExplainabilityReport, downloadExplainabilityReport } from "../lib/
 import { ImageViewerCard } from "../components/domain/ImageViewerCard";
 import { UploadInferenceCard } from "../components/domain/UploadInferenceCard";
 import { AbcdeCalculator, defaultAbcdeState, type AbcdeState } from "../components/domain/AbcdeCalculator";
+import { ClinicalReportModal } from "../components/domain/ClinicalReportModal";
 import { PredictionList } from "../components/domain/PredictionList";
 import { Card } from "../components/primitives/Card";
 import { StatusBadge } from "../components/primitives/StatusBadge";
@@ -41,6 +42,7 @@ export function CaseReview({
   onUploadMetadataChange: (metadata: UploadMetadataInput) => void;
 }) {
   const [abcdeState, setAbcdeState] = useState<AbcdeState>(defaultAbcdeState);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   const melanomaProbability = useMemo(() => {
     if (!caseRecord) return 0;
@@ -224,9 +226,17 @@ export function CaseReview({
             <span className="font-bold text-clinical-ink">{caseRecord.caseId}</span> - {caseRecord.maskedPatientId} - {caseRecord.visitDate}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge label={caseRecord.reviewStatus} tone={caseRecord.reviewStatus === "Senior review" ? "danger" : "warning"} />
           <StatusBadge label={caseRecord.modelMode} tone="accent" />
+          <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-clinical border border-clinical-accent bg-clinical-accent px-3 py-1.5 font-mono text-xs font-semibold text-clinical-canvas outline-none transition hover:bg-clinical-accentHover focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Export Monograph PDF
+          </button>
         </div>
       </div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
@@ -259,15 +269,27 @@ export function CaseReview({
             title="SLM explanation"
             eyebrow="Generated rationale"
             action={
-              <button
-                type="button"
-                onClick={() => downloadExplainabilityReport(caseRecord, abcdeState)}
-                className="inline-flex items-center gap-2 rounded-clinical border border-clinical-line bg-clinical-surface px-3 py-1.5 font-mono text-xs font-semibold text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
-                aria-label="Download explainability report"
-              >
-                <Download className="h-3.5 w-3.5" aria-hidden="true" />
-                Download Report
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-clinical border border-clinical-accent/30 bg-clinical-accentSoft px-2.5 py-1.5 font-mono text-xs font-semibold text-clinical-accent outline-none transition hover:bg-clinical-accent/20 focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+                  title="Preview & Print Clinical Monograph"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Monograph PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadExplainabilityReport(caseRecord, abcdeState)}
+                  className="inline-flex items-center gap-1.5 rounded-clinical border border-clinical-line bg-clinical-surface px-2.5 py-1.5 font-mono text-xs font-semibold text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+                  aria-label="Download text report"
+                  title="Download .TXT report"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  .TXT
+                </button>
+              </div>
             }
           >
             <pre className="max-h-[380px] overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-6 text-clinical-ink">
@@ -298,6 +320,14 @@ export function CaseReview({
           <PredictionList scores={caseRecord.predictionScores ?? []} />
         </div>
       </div>
+
+      <ClinicalReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        caseRecord={caseRecord}
+        abcdeState={abcdeState}
+        artifactUrls={viewerArtifactUrls}
+      />
     </>
   );
 }

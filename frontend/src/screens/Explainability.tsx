@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import type { CaseRecord } from "../types/lesioniq";
 import { reviewActions } from "../data/system";
 import { resolveLesionIQArtifactUrl } from "../lib/lesioniqApi";
@@ -8,6 +8,8 @@ import { ActionPanel } from "../components/domain/ActionPanel";
 import { AttributionBars } from "../components/domain/AttributionBars";
 import { AuditChecklist } from "../components/domain/AuditChecklist";
 import { AuditNoteList } from "../components/domain/AuditNoteList";
+import { ClinicalReportModal } from "../components/domain/ClinicalReportModal";
+import { defaultAbcdeState } from "../components/domain/AbcdeCalculator";
 import { DermoscopyMock } from "../components/domain/DermoscopyMock";
 import { Card } from "../components/primitives/Card";
 import { PageHeader } from "../components/primitives/PageHeader";
@@ -33,6 +35,7 @@ export function Explainability({
   analysisReady: boolean;
 }) {
   const [tab, setTab] = useState<ExplainTab>("gradcam");
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const bundle = caseRecord?.inferenceBundle;
   const resolvedArtifacts = useMemo(() => {
     const artifact = (url?: string) => resolveLesionIQArtifactUrl(url, bundle?.outputDirectory);
@@ -72,7 +75,19 @@ export function Explainability({
       <PageHeader
         title="Explainability"
         subtitle={`${caseRecord.caseId}: ${caseRecord.predictedClassCode} - ${caseRecord.predictedClassLabel} at ${Math.round(caseRecord.calibratedConfidence * 100)}% calibrated confidence`}
-        meta={<StatusBadge label="Clinician verification required" tone="warning" />}
+        meta={
+          <div className="flex items-center gap-2">
+            <StatusBadge label="Clinician verification required" tone="warning" />
+            <button
+              type="button"
+              onClick={() => setReportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-clinical border border-clinical-accent bg-clinical-accent px-3 py-1.5 font-mono text-xs font-semibold text-clinical-canvas outline-none transition hover:bg-clinical-accentHover focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Export Monograph PDF
+            </button>
+          </div>
+        }
       />
       <div className="mb-4"><SectionTabs tabs={tabs} value={tab} onChange={setTab} ariaLabel="Explainability evidence tabs" /></div>
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_420px]">
@@ -95,15 +110,26 @@ export function Explainability({
             title="Generated SLM explanation"
             eyebrow="Natural-language rationale"
             action={
-              <button
-                type="button"
-                onClick={() => downloadExplainabilityReport(caseRecord)}
-                className="inline-flex items-center gap-2 rounded-md border border-clinical-line bg-clinical-raised px-3 py-2 text-xs font-semibold text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
-                aria-label="Download explainability report"
-              >
-                <Download className="h-4 w-4" aria-hidden="true" />
-                Download
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-clinical border border-clinical-accent/30 bg-clinical-accentSoft px-2.5 py-1.5 font-mono text-xs font-semibold text-clinical-accent outline-none transition hover:bg-clinical-accent/20 focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+                  title="Preview & Print Clinical Monograph"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Monograph PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => downloadExplainabilityReport(caseRecord)}
+                  className="inline-flex items-center gap-1.5 rounded-clinical border border-clinical-line bg-clinical-surface px-2.5 py-1.5 font-mono text-xs font-semibold text-clinical-ink outline-none transition hover:border-clinical-accent/35 hover:bg-clinical-accentSoft focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+                  aria-label="Download explainability report"
+                >
+                  <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                  .TXT
+                </button>
+              </div>
             }
           >
             <pre className="max-h-[420px] overflow-auto whitespace-pre-wrap break-words font-mono text-xs leading-6 text-clinical-ink">
@@ -140,6 +166,18 @@ export function Explainability({
           <AuditNoteList notes={caseRecord.explainability.auditNotes} />
         </aside>
       </div>
+
+      <ClinicalReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        caseRecord={caseRecord}
+        abcdeState={defaultAbcdeState}
+        artifactUrls={{
+          raw: resolvedArtifacts.finalPreprocessedArtifact,
+          gradcam: resolvedArtifacts.gradcamArtifact,
+          attention: resolvedArtifacts.attentionArtifact
+        }}
+      />
     </>
   );
 }
