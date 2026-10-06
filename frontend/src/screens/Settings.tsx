@@ -29,7 +29,7 @@ export function Settings({
     <>
       <PageHeader title="Settings" subtitle="Prototype system configuration and future backend integration notes." />
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Model and inference" eyebrow="LesionIQ runtime context">
+        <Card title="Model and inference" eyebrow="DermaLens runtime context">
           <div className="grid gap-3">
             <MetricCard label="Model mode" value={systemStatus.inferenceMode} />
             <MetricCard label="Model version" value={systemStatus.modelVersion} />

@@ -1,12 +1,12 @@
 import type { ReviewAction, SystemStatus } from "../types/lesioniq";
 
 export const systemStatus: SystemStatus = {
-  modelVersion: "LesionIQ hybrid ensemble v3",
+  modelVersion: "DermaLens hybrid ensemble v3",
   appVersion: "Frontend prototype 0.1.0",
   calibrationStatus: "Temperature scaling active (T=0.75)",
   thresholdTuningStatus: "Clinical DiffEvo thresholds active with MEL safety review flag",
   explainabilityStatus: "Grad-CAM++, Swin attention rollout, metadata attribution, SLM narrative",
-  preprocessingVersion: "lesioniq-preprocess 2026.04",
+  preprocessingVersion: "dermalens-preprocess 2026.04",
   inferenceMode: "Full Hybrid"
 };
 

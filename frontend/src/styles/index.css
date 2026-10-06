@@ -2,100 +2,114 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===================================================================
+   DermaLens Clinical Design System: 4-Color Precision Architecture
+   Palette:
+     1. Bone Canvas      (Light #F6F5F0 / Dark #111211)
+     2. Sumi Carbon Ink  (Light #151715 / Dark #EDEDE7)
+     3. Smoked Juniper   (Light #2B3E32 / Dark #4C6855) -> Primary Accent
+     4. Raw Terracotta   (Light #B84A28 / Dark #D45E3C) -> Urgency / Alert
+   Zero blue. Zero purple. Zero gradient AI slop.
+   =================================================================== */
+
 :root {
-  --bg-main: #B9CFC9;
+  /* 1. Bone Canvas */
+  --bg-main: #F6F5F0;
   --bg-soft: #FFFFFF;
-  --bg-feature: linear-gradient(180deg, #FFFFFF 0%, #F7FBFA 100%);
+  --bg-feature: #FFFFFF;
   --surface: #FFFFFF;
-  --surface-strong: #F7FBFA;
-  --surface-soft: #EEF6F4;
-  --border: #D7E5E1;
-  --text: #1F2A27;
-  --text-muted: #6C7B77;
-  --primary: #0F9F8F;
-  --primary-hover: #0B7F73;
-  --success: #379E72;
-  --warning: #9A7D42;
-  --danger: #A65D5D;
+  --surface-strong: #EFECE5;
+  --surface-soft: #F9F8F5;
 
-  --gradient-main: linear-gradient(135deg, #B9CFC9 0%, #D6E7E2 48%, #B2C9C2 100%);
-  --gradient-soft-panel: var(--bg-soft);
-  --gradient-feature-panel: var(--bg-feature);
-  --border-subtle: var(--border);
-  --border-visible: #D7E5E1;
-  --ambient-sage: rgba(15, 159, 143, 0.08);
-  --ambient-clay: rgba(159, 231, 222, 0.12);
-  --topbar-surface: rgba(255, 255, 255, 0.88);
-  --sidebar-surface: rgba(255, 255, 255, 0.9);
-  --drawer-scrim: rgba(24, 39, 36, 0.32);
-  --warning-surface: rgba(255, 255, 255, 0.9);
-  --metadata-chip-surface: rgba(255, 255, 255, 0.96);
-  --shadow-panel: 0 18px 40px rgba(24, 48, 44, 0.1);
-  --shadow-sidebar: 18px 0 40px rgba(24, 48, 44, 0.1);
+  /* 2. Sumi Carbon Ink */
+  --text: #151715;
+  --text-muted: #6B716A;
+  --border: #DFDCD3;
+  --border-subtle: #DFDCD3;
+  --border-visible: #D2CEC3;
 
-  --color-ink-rgb: 31 42 39;
-  --color-muted-rgb: 108 123 119;
-  --color-border-rgb: 215 229 225;
-  --color-canvas-rgb: 185 207 201;
+  /* 3. Smoked Juniper Pine (Primary Accent) */
+  --primary: #2B3E32;
+  --primary-hover: #1F2E25;
+  --accent-soft: #E9EFEA;
+
+  /* 4. Raw Terracotta (Clinical Urgency / Malignancy) */
+  --alert: #B84A28;
+  --alert-soft: #FBEEEA;
+
+  /* RGB channels for tailwind opacity support */
+  --color-ink-rgb: 21 23 21;
+  --color-muted-rgb: 107 113 106;
+  --color-line-rgb: 223 220 211;
+  --color-canvas-rgb: 246 245 240;
   --color-surface-rgb: 255 255 255;
-  --color-surface-strong-rgb: 247 251 250;
-  --color-surface-soft-rgb: 238 246 244;
-  --color-accent-rgb: 15 159 143;
-  --color-accent-hover-rgb: 11 127 115;
-  --color-accent-soft-rgb: 226 246 242;
-  --color-stone-rgb: 108 123 119;
-  --color-clay-rgb: 215 229 225;
-  --color-warning-rgb: 154 125 66;
-  --color-danger-rgb: 166 93 93;
-  --color-success-rgb: 55 158 114;
+  --color-surface-strong-rgb: 239 236 229;
+  --color-surface-soft-rgb: 249 248 245;
+
+  --color-accent-rgb: 43 62 50;        /* Smoked Juniper */
+  --color-accent-hover-rgb: 31 46 37;
+  --color-accent-soft-rgb: 233 239 234;
+
+  --color-alert-rgb: 184 74 40;        /* Raw Terracotta */
+  --color-danger-rgb: 184 74 40;
+  --color-warning-rgb: 184 74 40;
+  --color-success-rgb: 43 62 50;       /* Align success with Smoked Juniper */
+
+  /* Architectural subtle shadow */
+  --shadow-panel: 0 1px 3px rgba(21, 23, 21, 0.04), 0 1px 2px rgba(21, 23, 21, 0.02);
+  --shadow-sidebar: 1px 0 0 rgba(223, 220, 211, 1);
+  --topbar-surface: rgba(255, 255, 255, 0.95);
+  --sidebar-surface: #FBFBFA;
+  --drawer-scrim: rgba(21, 23, 21, 0.45);
 }
 
 .dark {
-  --bg-main: #0B0B0B;
-  --bg-soft: #1A1A1A;
-  --bg-feature: linear-gradient(145deg, #1A1A1A 0%, #211f1b 48%, #2a271f 100%);
-  --surface: #1A1A1A;
-  --surface-strong: #202020;
-  --surface-soft: #242321;
-  --border: rgba(192, 160, 106, 0.24);
-  --text: #E0E0E0;
-  --text-muted: #A0A0A0;
-  --primary: #C0A06A;
-  --primary-hover: #B38F58;
-  --success: #5AC18E;
-  --warning: #C0A06A;
-  --danger: #A8645F;
+  /* 1. Carbon Canvas */
+  --bg-main: #111211;
+  --bg-soft: #171817;
+  --bg-feature: #171817;
+  --surface: #171817;
+  --surface-strong: #202220;
+  --surface-soft: #141514;
 
-  --gradient-main: var(--bg-main);
-  --gradient-soft-panel: var(--bg-soft);
-  --gradient-feature-panel: var(--bg-feature);
-  --border-subtle: var(--border);
-  --border-visible: rgba(192, 160, 106, 0.38);
-  --ambient-sage: rgba(90, 193, 142, 0.04);
-  --ambient-clay: rgba(192, 160, 106, 0.1);
-  --topbar-surface: rgba(26, 26, 26, 0.94);
-  --sidebar-surface: rgba(18, 18, 18, 0.98);
-  --drawer-scrim: rgba(0, 0, 0, 0.68);
-  --warning-surface: rgba(192, 160, 106, 0.18);
-  --metadata-chip-surface: rgba(32, 32, 32, 0.94);
-  --shadow-panel: 0 18px 46px rgba(4, 7, 6, 0.32);
-  --shadow-sidebar: 18px 0 48px rgba(0, 0, 0, 0.24);
+  /* 2. Archival Bone Ink */
+  --text: #EDEDE7;
+  --text-muted: #969C95;
+  --border: #282A28;
+  --border-subtle: #282A28;
+  --border-visible: #343734;
 
-  --color-ink-rgb: 224 224 224;
-  --color-muted-rgb: 160 160 160;
-  --color-border-rgb: 192 160 106;
-  --color-canvas-rgb: 11 11 11;
-  --color-surface-rgb: 26 26 26;
-  --color-surface-strong-rgb: 32 32 32;
-  --color-surface-soft-rgb: 36 35 33;
-  --color-accent-rgb: 192 160 106;
-  --color-accent-hover-rgb: 179 143 88;
-  --color-accent-soft-rgb: 74 58 36;
-  --color-stone-rgb: 192 160 106;
-  --color-clay-rgb: 168 100 95;
-  --color-warning-rgb: 192 160 106;
-  --color-danger-rgb: 168 100 95;
-  --color-success-rgb: 90 193 142;
+  /* 3. Smoked Juniper (Calibrated for dark mode contrast) */
+  --primary: #4C6855;
+  --primary-hover: #597A64;
+  --accent-soft: #1C2620;
+
+  /* 4. Raw Terracotta (Dark mode contrast) */
+  --alert: #D45E3C;
+  --alert-soft: #2B1B16;
+
+  --color-ink-rgb: 237 237 231;
+  --color-muted-rgb: 150 156 149;
+  --color-line-rgb: 40 42 40;
+  --color-canvas-rgb: 17 18 17;
+  --color-surface-rgb: 23 24 23;
+  --color-surface-strong-rgb: 32 34 32;
+  --color-surface-soft-rgb: 20 21 20;
+
+  --color-accent-rgb: 76 104 85;       /* #4C6855 */
+  --color-accent-hover-rgb: 89 122 100;
+  --color-accent-soft-rgb: 28 38 32;
+
+  --color-alert-rgb: 212 94 60;        /* #D45E3C */
+  --color-danger-rgb: 212 94 60;
+  --color-warning-rgb: 212 94 60;
+  --color-success-rgb: 76 104 85;
+
+  --shadow-panel: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-sidebar: 1px 0 0 rgba(40, 42, 40, 1);
+  --topbar-surface: rgba(23, 24, 23, 0.95);
+  --sidebar-surface: #141514;
+  --drawer-scrim: rgba(0, 0, 0, 0.75);
 }
 
 * {
@@ -112,7 +126,7 @@ html {
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--gradient-main);
+  background-color: var(--bg-main);
   color: rgb(var(--color-ink-rgb));
   font-weight: 400;
 }
@@ -130,25 +144,33 @@ p {
   margin-top: 0;
 }
 
+/* Precision Clean Input Fields */
 .clinical-field {
   color-scheme: light;
   appearance: none;
-  background-color: rgb(var(--color-surface-strong-rgb));
-  border-color: var(--border-subtle);
-  border-radius: 14px;
+  background-color: rgb(var(--color-surface-rgb));
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
   color: rgb(var(--color-ink-rgb));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .clinical-field:focus {
-  border-color: rgba(var(--color-accent-rgb), 0.55);
-  box-shadow: 0 0 0 3px rgba(var(--color-accent-rgb), 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  border-color: rgb(var(--color-accent-rgb));
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.15);
 }
 
 .dark .clinical-field {
   color-scheme: dark;
   background-color: rgb(var(--color-surface-strong-rgb));
-  border-color: rgba(var(--color-accent-rgb), 0.28);
+  border-color: var(--border-subtle);
+}
+
+.dark .clinical-field:focus {
+  border-color: rgb(var(--color-accent-rgb));
+  box-shadow: 0 0 0 2px rgba(var(--color-accent-rgb), 0.25);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -162,69 +184,29 @@ p {
   }
 }
 
+/* Dermoscopy Viewer Elements */
 .dermoscopy-frame {
-  background:
-    radial-gradient(circle at 50% 50%, rgba(96, 61, 45, 0.18), transparent 34%),
-    radial-gradient(circle at 50% 50%, #d5b28e 0 33%, #bd8f6d 46%, #a47d62 63%, #6c675d 79%, #212521 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 0 58px rgba(6, 8, 7, 0.42), 0 16px 38px rgba(0, 0, 0, 0.25);
-}
-
-.dermoscopy-frame::before {
-  content: "";
-  position: absolute;
-  inset: 3%;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 18px rgba(24, 27, 25, 0.24), inset 0 0 54px rgba(16, 13, 10, 0.42);
+  background: #242220;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .dermoscopy-lesion {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 42%;
-  height: 36%;
-  transform: translate(-50%, -50%) rotate(-13deg);
-  border-radius: 43% 57% 49% 51% / 47% 42% 58% 53%;
-  background:
-    radial-gradient(circle at 62% 34%, rgba(49, 25, 18, 0.78) 0 10%, transparent 18%),
-    radial-gradient(circle at 35% 58%, rgba(92, 48, 32, 0.85) 0 20%, transparent 36%),
-    radial-gradient(circle at 51% 50%, #5d3329 0 26%, #764332 45%, #9a6342 76%, #6b3a2d 100%);
-  box-shadow: 0 0 0 1px rgba(48, 32, 24, 0.2), 0 14px 34px rgba(55, 31, 23, 0.22);
-}
-
-.dermoscopy-lesion::after {
-  content: "";
-  position: absolute;
-  inset: 17% 13%;
-  border-radius: 50%;
-  background:
-    linear-gradient(34deg, transparent 0 44%, rgba(39, 22, 18, 0.38) 45% 47%, transparent 48%),
-    linear-gradient(102deg, transparent 0 54%, rgba(39, 22, 18, 0.26) 55% 57%, transparent 58%);
-  opacity: 0.8;
-}
-
-.tone-hair::before {
-  content: "";
-  position: absolute;
-  inset: -26%;
-  background:
-    linear-gradient(20deg, transparent 45%, rgba(38, 28, 22, 0.46) 46%, transparent 48%),
-    linear-gradient(103deg, transparent 58%, rgba(38, 28, 22, 0.35) 59%, transparent 61%);
-}
-
-.tone-normalized {
-  filter: saturate(0.95) contrast(1.12) brightness(1.04);
-}
-
-.tone-border {
-  transform: translate(-50%, -50%) rotate(-13deg) scale(1.06);
+  width: 44%;
+  height: 38%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  border-radius: 46% 54% 48% 52% / 48% 44% 56% 52%;
+  background: #4A332A;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 .overlay-layer {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  mix-blend-mode: multiply;
 }
 
 .overlay-raw {
@@ -232,88 +214,68 @@ p {
 }
 
 .overlay-gradcam {
-  opacity: 0.9;
-  background:
-    radial-gradient(circle at 51% 45%, rgba(224, 72, 39, 0.75) 0 10%, rgba(237, 157, 49, 0.6) 22%, transparent 36%),
-    radial-gradient(circle at 41% 60%, rgba(120, 162, 139, 0.35) 0 12%, transparent 28%);
+  opacity: 0.85;
+  background: radial-gradient(circle at 50% 50%, rgba(184, 74, 40, 0.85) 0%, rgba(43, 62, 50, 0.4) 40%, transparent 70%);
 }
 
 .overlay-attention {
-  opacity: 0.82;
-  background:
-    linear-gradient(rgba(255, 255, 255, 0.22) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.22) 1px, transparent 1px),
-    radial-gradient(circle at 55% 50%, rgba(120, 162, 139, 0.48), transparent 32%);
-  background-size: 12.5% 12.5%, 12.5% 12.5%, auto;
+  opacity: 0.75;
+  background: radial-gradient(circle at 52% 48%, rgba(43, 62, 50, 0.8) 0%, transparent 60%);
 }
 
 .overlay-metadata {
-  opacity: 0.68;
-  background:
-    linear-gradient(90deg, rgba(120, 162, 139, 0.28), transparent 45%),
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.18), transparent 45%);
+  opacity: 0.5;
+  background: rgba(43, 62, 50, 0.15);
 }
 
+/* Architectural Panels (Zero gradient slop, flat & pure) */
 .app-gradient {
-  background:
-    radial-gradient(circle at 16% 0%, var(--ambient-sage), transparent 24%),
-    radial-gradient(circle at 88% 14%, var(--ambient-clay), transparent 26%),
-    var(--gradient-main);
+  background-color: var(--bg-main);
 }
 
 .panel-surface {
-  background: var(--gradient-soft-panel);
-  border-color: var(--border-visible);
+  background-color: var(--surface);
+  border-color: var(--border-subtle);
   box-shadow: var(--shadow-panel);
 }
 
 .feature-panel {
-  background: var(--gradient-feature-panel);
-  border-color: var(--border-visible);
+  background-color: var(--surface);
+  border-color: var(--border-subtle);
   box-shadow: var(--shadow-panel);
 }
 
 .quiet-panel {
-  background: var(--surface-strong);
+  background-color: var(--surface-strong);
   border-color: var(--border-subtle);
 }
 
 .soft-panel {
-  background: var(--surface-soft);
+  background-color: var(--surface-soft);
   border-color: var(--border-subtle);
 }
 
 .control-surface {
-  background: var(--surface-strong);
+  background-color: var(--surface-strong);
   border-color: var(--border-subtle);
 }
 
 .topbar-surface {
-  background: var(--topbar-surface);
+  background-color: var(--topbar-surface);
   border-color: var(--border-subtle);
-  box-shadow: 0 12px 28px rgba(24, 48, 44, 0.08);
 }
 
 .sidebar-surface {
-  background: var(--sidebar-surface);
+  background-color: var(--sidebar-surface);
   border-color: var(--border-subtle);
-  box-shadow: var(--shadow-sidebar);
-}
-
-.dark .topbar-surface {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
-}
-
-.drawer-scrim {
-  background: var(--drawer-scrim);
 }
 
 .warning-surface {
-  background: var(--warning-surface);
-  border-color: rgba(192, 160, 106, 0.32);
+  background-color: rgba(var(--color-alert-rgb), 0.08);
+  border-color: rgba(var(--color-alert-rgb), 0.3);
 }
 
 .metadata-chip {
-  background: var(--metadata-chip-surface);
+  background-color: var(--surface);
   border-color: var(--border-subtle);
 }

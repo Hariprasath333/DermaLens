@@ -42,6 +42,7 @@ function sanitizeSlmText(summary: string): string {
     .replace(/\r\n/g, "\n")
     .replace(/\s+/g, " ")
     .replace(new RegExp(REPORT_DIVIDER, "g"), "")
+    .replace(/DERMALENS CLINICAL EXPLAINABILITY REPORT/g, "")
     .replace(/LESIONIQ CLINICAL EXPLAINABILITY REPORT/g, "")
     .replace(/\bPREDICTION\b/g, "")
     .replace(/\bEVIDENCE\b/g, "")
@@ -90,7 +91,7 @@ export function buildExplainabilityReport(caseRecord: CaseRecord): string {
   const reasoning = reasoningLines(caseRecord).map((line) => `  ${line}`).join("\n\n");
 
   return `${REPORT_DIVIDER}
-LESIONIQ CLINICAL EXPLAINABILITY REPORT
+DERMALENS CLINICAL EXPLAINABILITY REPORT
 ${REPORT_DIVIDER}
 
 PREDICTION

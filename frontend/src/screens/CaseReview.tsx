@@ -71,7 +71,7 @@ export function CaseReview({
           <p className="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-clinical-muted">Live analysis running</p>
           <h1 className="mt-2 text-2xl font-semibold text-clinical-ink">Processing dermoscopy evidence</h1>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-clinical-muted">
-            LesionIQ is waiting for the backend response from preprocessing, inference, explainability artifacts, and the local SLM bundle.
+            DermaLens is processing the backend response from preprocessing, inference, explainability artifacts, and the local SLM bundle.
           </p>
           <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-clinical-raised">
             <div className="h-full w-1/2 animate-[pulse_1.4s_ease-in-out_infinite] rounded-full bg-clinical-accent" />
@@ -191,7 +191,7 @@ export function CaseReview({
         <aside className="space-y-4">
           <Card title="Metadata gate" eyebrow="Hybrid model input">
             <p className="text-sm leading-6 text-clinical-muted">
-              LesionIQ Full Hybrid mode fuses the image branch with normalized age plus encoded sex and anatomical site.
+              DermaLens Full Hybrid mode fuses the image branch with normalized age plus encoded sex and anatomical site.
             </p>
           </Card>
           <Card title="Analysis status" eyebrow="Pending">

@@ -60,9 +60,9 @@ export function SidebarNav({
               onClose();
             }}
             className={cx(
-              "flex w-full items-center rounded-[14px] py-2.5 text-[13px] outline-none transition focus-visible:ring-2 focus-visible:ring-clinical-accent/50",
+              "flex w-full items-center rounded-clinical py-2 text-[13px] outline-none transition focus-visible:ring-2 focus-visible:ring-clinical-accent/50",
               isCollapsed ? "justify-center px-2" : "gap-3 px-3 text-left",
-              active === id ? "border border-clinical-accent/25 bg-clinical-accentSoft font-bold text-clinical-ink shadow-sm" : "border border-transparent font-medium text-clinical-muted hover:border-clinical-line hover:bg-clinical-surface hover:text-clinical-ink"
+              active === id ? "border border-clinical-accent/25 bg-clinical-accentSoft font-semibold text-clinical-ink" : "border border-transparent font-medium text-clinical-muted hover:border-clinical-line hover:bg-clinical-surface hover:text-clinical-ink"
             )}
           >
             <Icon className="h-4 w-4 shrink-0" />

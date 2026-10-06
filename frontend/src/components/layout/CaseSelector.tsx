@@ -15,7 +15,7 @@ export function CaseSelector({
       <select
         value={selectedId ?? "__intake__"}
         onChange={(event) => onSelect(event.target.value)}
-        className="min-w-[220px] rounded-md border border-clinical-line bg-clinical-surface px-3 py-2 text-sm font-semibold text-clinical-ink outline-none hover:border-clinical-accent/45 focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
+        className="min-w-[210px] rounded-clinical border border-clinical-line bg-clinical-surface px-3 py-1.5 font-mono text-xs font-semibold text-clinical-ink outline-none hover:border-clinical-accent/45 focus-visible:ring-2 focus-visible:ring-clinical-accent/50"
       >
         <option value="__intake__">Upload intake - no analysis</option>
         {cases.map((caseRecord) => (

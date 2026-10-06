@@ -60,7 +60,7 @@ export function Preprocessing({
         subtitle={`${caseRecord.caseId}: transparent image cleanup provenance before hybrid inference.`}
         meta={<StatusBadge label={systemStatus.preprocessingVersion} tone="accent" />}
       />
-      <Card title="Pipeline overview" eyebrow="LesionIQ 4-step preprocessing">
+      <Card title="Pipeline overview" eyebrow="DermaLens 4-step preprocessing">
         <div className="grid gap-3 md:grid-cols-4">
           {["Raw input", "DullRazor hair removal", "Shades-of-Gray + CLAHE", "Border removal"].map((step, index) => (
             <div key={step} className="rounded-md border border-clinical-line bg-clinical-raised p-3">
@@ -115,7 +115,7 @@ export function Preprocessing({
       <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_.8fr]">
         <Card title="Technical rationale" eyebrow="Robustness and transparency">
           <p className="text-sm leading-6 text-clinical-ink">
-            LesionIQ uses preprocessing to reduce non-biological variance before the image and metadata fusion model runs.
+            DermaLens uses preprocessing to reduce non-biological variance before the image and metadata fusion model runs.
             Hair artifacts, device color shifts, local contrast loss, and dermoscope vignette borders are handled as explicit,
             auditable stages so reviewers can inspect whether the model received a clinically faithful lesion view.
           </p>
