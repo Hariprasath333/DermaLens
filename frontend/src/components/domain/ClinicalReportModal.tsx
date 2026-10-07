@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Download, FileText, Printer, ShieldAlert, X } from "lucide-react";
+import { Download, FileText, Printer, X } from "lucide-react";
 import type { CaseRecord, OverlayMode } from "../../types/lesioniq";
-import type { AbcdeState } from "./AbcdeCalculator";
+import type { AbcdeState } from "../../types/abcde";
 import { downloadExplainabilityReport } from "../../lib/explainabilityReport";
 import { pct } from "../../lib/format";
-import { StatusBadge } from "../primitives/StatusBadge";
 
 interface ClinicalReportModalProps {
   isOpen: boolean;

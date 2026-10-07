@@ -1,24 +1,8 @@
 import { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, RotateCcw, ShieldAlert, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, RotateCcw, ShieldAlert } from "lucide-react";
 import { Card } from "../primitives/Card";
-import { StatusBadge } from "../primitives/StatusBadge";
 import { pct } from "../../lib/format";
-
-export interface AbcdeState {
-  asymmetry: 0 | 1 | 2;
-  border: 0 | 1 | 2;
-  color: 0 | 1 | 2;
-  diameter: 0 | 1;
-  evolution: 0 | 1;
-}
-
-export const defaultAbcdeState: AbcdeState = {
-  asymmetry: 0,
-  border: 0,
-  color: 0,
-  diameter: 0,
-  evolution: 0
-};
+import { defaultAbcdeState, type AbcdeState } from "../../types/abcde";
 
 interface CriterionConfig<T extends number> {
   letter: string;
@@ -101,12 +85,12 @@ export function AbcdeCalculator({
   const [internalState, setInternalState] = useState<AbcdeState>(defaultAbcdeState);
   const current = state ?? internalState;
 
-  function update<K extends keyof AbcdeState>(key: K, value: AbcdeState[K]) {
+  function update(key: keyof AbcdeState, value: number) {
     const next = { ...current, [key]: value };
     if (onChange) {
-      onChange(next);
+      onChange(next as AbcdeState);
     } else {
-      setInternalState(next);
+      setInternalState(next as AbcdeState);
     }
   }
 
@@ -114,8 +98,6 @@ export function AbcdeCalculator({
 
   // Composite Risk Assessment (ABCDE + Calibrated Model Probability)
   const assessment = useMemo(() => {
-    const melPct = melanomaProbability * 100;
-
     if (score >= 5 || (score >= 4 && melanomaProbability >= 0.25) || melanomaProbability >= 0.5) {
       return {
         tier: "High Concern — Biopsy Recommended",
@@ -194,7 +176,7 @@ export function AbcdeCalculator({
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => update(key, opt.value as any)}
+                      onClick={() => update(key, opt.value)}
                       className={`flex flex-col items-start rounded-clinical border p-2.5 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-clinical-accent/50 ${
                         isSelected
                           ? isHighPoint

@@ -9,7 +9,7 @@ import { AttributionBars } from "../components/domain/AttributionBars";
 import { AuditChecklist } from "../components/domain/AuditChecklist";
 import { AuditNoteList } from "../components/domain/AuditNoteList";
 import { ClinicalReportModal } from "../components/domain/ClinicalReportModal";
-import { defaultAbcdeState } from "../components/domain/AbcdeCalculator";
+import { defaultAbcdeState } from "../types/abcde";
 import { DermoscopyMock } from "../components/domain/DermoscopyMock";
 import { Card } from "../components/primitives/Card";
 import { PageHeader } from "../components/primitives/PageHeader";
